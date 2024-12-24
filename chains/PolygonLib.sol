@@ -4,17 +4,33 @@ pragma solidity ^0.8.23;
 import "../src/core/proxy/Proxy.sol";
 import "../src/adapters/libs/AmmAdapterIdLib.sol";
 import "../src/adapters/ChainlinkAdapter.sol";
-import "../src/strategies/libs/StrategyIdLib.sol";
-import "../src/strategies/libs/ALMPositionNameLib.sol";
 import "../src/interfaces/IFactory.sol";
 import "../src/interfaces/IPlatform.sol";
 import "../src/interfaces/ISwapper.sol";
+import "../src/interfaces/IPlatformDeployer.sol";
 import "../src/integrations/convex/IConvexRewardPool.sol";
-import "../script/libs/DeployLib.sol";
+import "../script/libs/LogDeployLib.sol";
 import "../script/libs/DeployAdapterLib.sol";
-import "../script/libs/DeployStrategyLib.sol";
+import "../src/strategies/libs/StrategyIdLib.sol";
+import "../src/strategies/libs/ALMPositionNameLib.sol";
+import "../src/strategies/libs/StrategyDeveloperLib.sol";
+import "../src/strategies/GammaQuickSwapMerklFarmStrategy.sol";
+import "../src/strategies/QuickSwapStaticMerklFarmStrategy.sol";
+import "../src/strategies/CompoundFarmStrategy.sol";
+import "../src/strategies/DefiEdgeQuickSwapMerklFarmStrategy.sol";
+import "../src/strategies/IchiQuickSwapMerklFarmStrategy.sol";
+import "../src/strategies/IchiRetroMerklFarmStrategy.sol";
+import "../src/strategies/GammaRetroMerklFarmStrategy.sol";
+import "../src/strategies/CurveConvexFarmStrategy.sol";
+import "../src/strategies/YearnStrategy.sol";
+import "../src/strategies/SteerQuickSwapMerklFarmStrategy.sol";
 
-/// @dev Addresses, routes, farms, strategy logics, reward tokens, deploy function and other data for Polygon network
+/// @dev Polygon network [chainId: 137] data library
+///      ┏┓  ┓
+///      ┃┃┏┓┃┓┏┏┓┏┓┏┓
+///      ┣┛┗┛┗┗┫┗┫┗┛┛┗
+///            ┛ ┛
+/// @author Alien Deployer (https://github.com/a17)
 library PolygonLib {
     // initial addresses
     address public constant MULTISIG = 0x36780E69D38c8b175761c6C5F8eD42E61ee490E9; // team
@@ -134,6 +150,21 @@ library PolygonLib {
     address public constant DEFIEDGE_STRATEGY_WMATIC_WETH_NARROW_2 = 0x07d82761C3527Caf190b946e13d5C11291194aE6; // Jan-09-2024
     address public constant DEFIEDGE_STRATEGY_WMATIC_USDC_NARROW = 0x29f177EFF806b8A71Ff8C7259eC359312CaCE22D; // Jan-09-2024
 
+    // Steer
+    // Classic Rebalance Strategy V2
+    address public constant STEER_STRATEGY_WBTC_WETH_NARROW = 0x12a7b5510f8f5E13F75aFF4d00b2F88CC99d22DB;
+    address public constant STEER_STRATEGY_USDC_WETH_NARROW = 0x7b99506C8E89D5ba835e00E2bC48e118264d44ff;
+    address public constant STEER_STRATEGY_WMATIC_USDC_NARROW = 0x1EB20de00B0Ed23E3f9fDA7d23Fcbf473a23f180;
+    address public constant STEER_STRATEGY_WMATIC_USDT_NARROW = 0x7dEFd09DCf1F2b0A17Da55011D22C9B7Cb3008ba;
+    // Moving Volatility Channel Strategy - Medium
+    address public constant STEER_STRATEGY_WMATIC_USDT_NARROW_CHANNEL = 0x97915Dab9f8c0d6C32BEB598ceA3B44138C6c35E;
+    // Elastic Expansion Strategy
+    address public constant STEER_STRATEGY_WMATIC_USDT_NARROW_ELASTIC = 0x94cdd4E4a461aD2108B761Cfa87D7Bc409d382e7;
+    // Static Stable Strategy V2. Not used because we have QSMF
+    // address public constant STEER_STRATEGY_USDC_USDT_NARROW = 0xac70AeB44Eb2630DF830323DC0E35023b7cb6086;
+    // address public constant STEER_STRATEGY_USDC_DAI_NARROW = 0x9346d6DB0a060D656Bb84bAa9F087CAebB75D9E8;
+    // address public constant STEER_STRATEGY_USDCe_USDC_NARROW = 0x5d58Cf042233a167Ab090276963D43b5A30616f4;
+
     // Ichi
     address public constant ICHI_QUICKSWAP_WMATIC_USDT = 0x5D73D117Ffb8AD26e6CC9f2621d52f479AAA8C5B; // Nov-13-2023
     address public constant ICHI_QUICKSWAP_WBTC_WETH = 0x5D1b077212b624fe580a84384Ffea44da752ccb3; // Nov-13-2023
@@ -171,32 +202,36 @@ library PolygonLib {
     // Merkl
     address public constant MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae;
 
-    function runDeploy(bool showLog) internal returns (address platform) {
-        //region ----- DeployPlatform -----
-        uint[] memory buildingPrice = new uint[](3);
-        buildingPrice[0] = 50_000e18;
-        buildingPrice[1] = 50_000e18;
-        buildingPrice[2] = 100_000e18;
-        platform = DeployLib.deployPlatform(
-            "24.05.0-alpha",
-            MULTISIG,
-            TOKEN_PM,
-            TOKEN_SDIV,
-            buildingPrice,
-            "Polygon",
-            CommonLib.bytesToBytes32(abi.encodePacked(bytes3(0x7746d7), bytes3(0x040206))),
-            TOKEN_USDCe,
-            GELATO_AUTOMATE,
-            1e18,
-            2e18
-        );
+    function platformDeployParams() internal pure returns (IPlatformDeployer.DeployPlatformParams memory p) {
+        p.multisig = MULTISIG;
+        p.version = "24.06.0-alpha";
+        p.buildingPermitToken = TOKEN_PM;
+        p.buildingPayPerVaultToken = TOKEN_SDIV;
+        p.networkName = "Polygon";
+        p.networkExtra = CommonLib.bytesToBytes32(abi.encodePacked(bytes3(0x7746d7), bytes3(0x040206)));
+        p.targetExchangeAsset = TOKEN_USDCe;
+        p.gelatoAutomate = GELATO_AUTOMATE;
+        p.gelatoMinBalance = 1e18;
+        p.gelatoDepositAmount = 2e18;
+    }
+
+    function deployAndSetupInfrastructure(address platform, bool showLog) internal {
+        IFactory factory = IFactory(IPlatform(platform).factory());
+
+        //region ----- Deployed Platform -----
         if (showLog) {
             console.log("Deployed Stability platform", IPlatform(platform).platformVersion());
             console.log("Platform address: ", platform);
         }
-        //endregion -- DeployPlatform ----
+        //endregion -- Deployed Platform ----
 
-        //region ----- DeployAndSetupOracleAdapters -----
+        //region ----- Deploy and setup vault types -----
+        _addVaultType(factory, VaultTypeLib.COMPOUNDING, address(new CVault()), 50_000e18);
+        _addVaultType(factory, VaultTypeLib.REWARDING, address(new RVault()), 50_000e18);
+        _addVaultType(factory, VaultTypeLib.REWARDING_MANAGED, address(new RMVault()), 100_000e18);
+        //endregion -- Deploy and setup vault types -----
+
+        //region ----- Deploy and setup oracle adapters -----
         IPriceReader priceReader = PriceReader(IPlatform(platform).priceReader());
         // Chainlink
         {
@@ -214,19 +249,19 @@ library PolygonLib {
             priceFeeds[2] = ORACLE_CHAINLINK_DAI_USD;
             chainlinkAdapter.addPriceFeeds(assets, priceFeeds);
             priceReader.addAdapter(address(chainlinkAdapter));
-            DeployLib.logDeployAndSetupOracleAdapter("ChainLink", address(chainlinkAdapter), showLog);
+            LogDeployLib.logDeployAndSetupOracleAdapter("ChainLink", address(chainlinkAdapter), showLog);
         }
-        //endregion -- DeployAndSetupOracleAdapters -----
+        //endregion -- Deploy and setup oracle adapters -----
 
         //region ----- Deploy AMM adapters -----
         DeployAdapterLib.deployAmmAdapter(platform, AmmAdapterIdLib.UNISWAPV3);
         DeployAdapterLib.deployAmmAdapter(platform, AmmAdapterIdLib.ALGEBRA);
         DeployAdapterLib.deployAmmAdapter(platform, AmmAdapterIdLib.KYBER);
         DeployAdapterLib.deployAmmAdapter(platform, AmmAdapterIdLib.CURVE);
-        DeployLib.logDeployAmmAdapters(platform, showLog);
+        LogDeployLib.logDeployAmmAdapters(platform, showLog);
         //endregion -- Deploy AMM adapters ----
 
-        //region ----- SetupSwapper -----
+        //region ----- Setup Swapper -----
         {
             (ISwapper.AddPoolData[] memory bcPools, ISwapper.AddPoolData[] memory pools) = routes();
             ISwapper swapper = ISwapper(IPlatform(platform).swapper());
@@ -256,12 +291,11 @@ library PolygonLib {
             thresholdAmount[8] = 1e15;
             thresholdAmount[9] = 1e15;
             swapper.setThresholds(tokenIn, thresholdAmount);
-            DeployLib.logSetupSwapper(platform, showLog);
+            LogDeployLib.logSetupSwapper(platform, showLog);
         }
-        //endregion -- SetupSwapper -----
+        //endregion -- Setup Swapper -----
 
         //region ----- Add farms -----
-        IFactory factory = IFactory(IPlatform(platform).factory());
         factory.addFarms(farms());
         // Jan-09-2024
         if (block.number > 52122638) {
@@ -271,7 +305,10 @@ library PolygonLib {
         if (block.number > 54573098) {
             factory.addFarms(farms3());
         }
-        DeployLib.logAddedFarms(address(factory), showLog);
+        if (block.number >= 55600000) {
+            factory.addFarms(farms4());
+        }
+        LogDeployLib.logAddedFarms(address(factory), showLog);
         //endregion -- Add farms -----
 
         //region ----- Add strategy available init params -----
@@ -296,20 +333,34 @@ library PolygonLib {
         defaultBoostRewardToken[0] = TOKEN_PROFIT;
         defaultBoostRewardToken[1] = TOKEN_USDCe;
         IPlatform(platform).addBoostTokens(allowedBoostRewardToken, defaultBoostRewardToken);
-        DeployLib.logSetupRewardTokens(platform, showLog);
+        LogDeployLib.logSetupRewardTokens(platform, showLog);
         //endregion -- Reward tokens -----
 
         //region ----- Deploy strategy logics -----
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.GAMMA_QUICKSWAP_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.QUICKSWAP_STATIC_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.COMPOUND_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.DEFIEDGE_QUICKSWAP_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.ICHI_QUICKSWAP_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.ICHI_RETRO_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.GAMMA_RETRO_MERKL_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.CURVE_CONVEX_FARM, true);
-        DeployStrategyLib.deployStrategy(platform, StrategyIdLib.YEARN, false);
-        DeployLib.logDeployStrategies(platform, showLog);
+        _addStrategyLogic(
+            factory, StrategyIdLib.GAMMA_QUICKSWAP_MERKL_FARM, address(new GammaQuickSwapMerklFarmStrategy()), true
+        );
+        _addStrategyLogic(
+            factory, StrategyIdLib.QUICKSWAP_STATIC_MERKL_FARM, address(new QuickSwapStaticMerklFarmStrategy()), true
+        );
+        _addStrategyLogic(factory, StrategyIdLib.COMPOUND_FARM, address(new CompoundFarmStrategy()), true);
+        _addStrategyLogic(
+            factory,
+            StrategyIdLib.DEFIEDGE_QUICKSWAP_MERKL_FARM,
+            address(new DefiEdgeQuickSwapMerklFarmStrategy()),
+            true
+        );
+        _addStrategyLogic(
+            factory, StrategyIdLib.ICHI_QUICKSWAP_MERKL_FARM, address(new IchiQuickSwapMerklFarmStrategy()), true
+        );
+        _addStrategyLogic(factory, StrategyIdLib.ICHI_RETRO_MERKL_FARM, address(new IchiRetroMerklFarmStrategy()), true);
+        _addStrategyLogic(
+            factory, StrategyIdLib.GAMMA_RETRO_MERKL_FARM, address(new GammaRetroMerklFarmStrategy()), true
+        );
+        _addStrategyLogic(factory, StrategyIdLib.CURVE_CONVEX_FARM, address(new CurveConvexFarmStrategy()), true);
+        _addStrategyLogic(factory, StrategyIdLib.YEARN, address(new YearnStrategy()), false);
+        _addStrategyLogic(factory, StrategyIdLib.STEER_QUICKSWAP_MERKL_FARM, address(new SteerQuickSwapMerklFarmStrategy()), true);
+        LogDeployLib.logDeployStrategies(platform, showLog);
         //endregion -- Deploy strategy logics -----
 
         //region ----- Add DeX aggregators -----
@@ -317,6 +368,15 @@ library PolygonLib {
         dexAggRouter[0] = ONE_INCH;
         IPlatform(platform).addDexAggregators(dexAggRouter);
         //endregion -- Add DeX aggregators -----
+
+        //region ----- Set AliasName of Token -----
+        factory.setAliasName(TOKEN_WETH, "E");
+        factory.setAliasName(TOKEN_WMATIC, "M");
+        factory.setAliasName(TOKEN_WBTC, "B");
+        factory.setAliasName(TOKEN_USDT, "UT");
+        factory.setAliasName(TOKEN_USDC, "UC");
+        factory.setAliasName(TOKEN_USDCe, "UCe");
+        //endregion ----- Set AliasName of Token -----
     }
 
     function routes()
@@ -462,6 +522,43 @@ library PolygonLib {
         _farms[i++] = _makeIchiQuickSwapMerklFarm(ICHI_QUICKSWAP_WMATIC_MaticX);
     }
 
+    // steer quickswap
+    function farms4() public view returns (IFactory.Farm[] memory _farms) {
+        _farms = new IFactory.Farm[](6);
+        uint i;
+
+        // [41]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_WMATIC_USDC_NARROW,
+            ALMPositionNameLib.NARROW
+        );
+        // [42]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_WBTC_WETH_NARROW,
+            ALMPositionNameLib.NARROW
+        );
+        // [43]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_USDC_WETH_NARROW,
+            ALMPositionNameLib.NARROW
+        );
+        // [44]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_WMATIC_USDT_NARROW,
+            ALMPositionNameLib.NARROW
+        );
+        // [45]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_WMATIC_USDT_NARROW_CHANNEL,
+            ALMPositionNameLib.NARROW_VOLATILITY_CHANNEL
+        );
+        // [46]
+        _farms[i++] = _makeSteerQuickSwapMerklFarm(
+            STEER_STRATEGY_WMATIC_USDT_NARROW_ELASTIC,
+            ALMPositionNameLib.NARROW_ELASTIC
+        );
+    }
+
     function _makeCurveConvexFarm(
         address curvePool,
         address convexRewardPool
@@ -493,7 +590,7 @@ library PolygonLib {
         farm.pool = IHypervisor(hypervisor).pool();
         farm.strategyLogicId = StrategyIdLib.GAMMA_QUICKSWAP_MERKL_FARM;
         farm.rewardAssets = new address[](1);
-        farm.rewardAssets[0] = TOKEN_dQUICK;
+        farm.rewardAssets[0] = TOKEN_QUICK;
         farm.addresses = new address[](2);
         farm.addresses[0] = GAMMA_QUICKSWAP_UNIPROXY;
         farm.addresses[1] = hypervisor;
@@ -503,7 +600,29 @@ library PolygonLib {
         return farm;
     }
 
-    function _makeGammaRetroMerklFarm(address hypervisor, uint preset) internal view returns (IFactory.Farm memory) {
+    function _makeSteerQuickSwapMerklFarm(
+        address hypervisor,
+        uint preset
+    ) internal view returns (IFactory.Farm memory) {
+        IFactory.Farm memory farm;
+        farm.status = 0;
+        farm.pool = IHypervisor(hypervisor).pool();
+        farm.strategyLogicId = StrategyIdLib.STEER_QUICKSWAP_MERKL_FARM;
+        farm.rewardAssets = new address[](2);
+        farm.rewardAssets[0] = TOKEN_QUICK;
+        farm.rewardAssets[1] = TOKEN_WMATIC;
+        farm.addresses = new address[](1);
+        farm.addresses[0] = hypervisor;
+        farm.nums = new uint[](1);
+        farm.nums[0] = preset;
+        farm.ticks = new int24[](0);
+        return farm;
+    }
+
+    function _makeGammaRetroMerklFarm(
+        address hypervisor,
+        uint preset
+    ) internal view returns (IFactory.Farm memory) {
         IFactory.Farm memory farm;
         farm.status = 0;
         farm.pool = IHypervisor(hypervisor).pool();
@@ -533,7 +652,7 @@ library PolygonLib {
         farm.pool = IDefiEdgeStrategy(underlyingDefiEdge).pool();
         farm.strategyLogicId = StrategyIdLib.DEFIEDGE_QUICKSWAP_MERKL_FARM;
         farm.rewardAssets = new address[](1);
-        farm.rewardAssets[0] = TOKEN_dQUICK;
+        farm.rewardAssets[0] = TOKEN_QUICK;
         farm.addresses = new address[](1);
         farm.addresses[0] = underlyingDefiEdge;
         farm.nums = new uint[](1);
@@ -548,7 +667,7 @@ library PolygonLib {
         farm.pool = IICHIVault(underlyingIchi).pool();
         farm.strategyLogicId = StrategyIdLib.ICHI_QUICKSWAP_MERKL_FARM;
         farm.rewardAssets = new address[](2);
-        farm.rewardAssets[0] = TOKEN_dQUICK;
+        farm.rewardAssets[0] = TOKEN_QUICK;
         farm.rewardAssets[1] = TOKEN_ICHI;
         farm.addresses = new address[](1);
         farm.addresses[0] = underlyingIchi;
@@ -586,7 +705,7 @@ library PolygonLib {
         farm.pool = pool;
         farm.strategyLogicId = StrategyIdLib.QUICKSWAP_STATIC_MERKL_FARM;
         farm.rewardAssets = new address[](1);
-        farm.rewardAssets[0] = TOKEN_dQUICK;
+        farm.rewardAssets[0] = TOKEN_QUICK;
         farm.addresses = new address[](1);
         farm.addresses[0] = QUICKSWAP_POSITION_MANAGER;
         farm.nums = new uint[](0);
@@ -617,6 +736,32 @@ library PolygonLib {
         address tokenOut
     ) internal pure returns (ISwapper.AddPoolData memory) {
         return ISwapper.AddPoolData({pool: pool, ammAdapterId: ammAdapterId, tokenIn: tokenIn, tokenOut: tokenOut});
+    }
+
+    function _addVaultType(IFactory factory, string memory id, address implementation, uint buildingPrice) internal {
+        factory.setVaultConfig(
+            IFactory.VaultConfig({
+                vaultType: id,
+                implementation: implementation,
+                deployAllowed: true,
+                upgradeAllowed: true,
+                buildingPrice: buildingPrice
+            })
+        );
+    }
+
+    function _addStrategyLogic(IFactory factory, string memory id, address implementation, bool farming) internal {
+        factory.setStrategyLogicConfig(
+            IFactory.StrategyLogicConfig({
+                id: id,
+                implementation: address(implementation),
+                deployAllowed: true,
+                upgradeAllowed: true,
+                farming: farming,
+                tokenId: type(uint).max
+            }),
+            StrategyDeveloperLib.getDeveloper(id)
+        );
     }
 
     function testPolygonLib() external {}
