@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 library AmmAdapterIdLib {
     string public constant UNISWAPV3 = "UniswapV3";
@@ -9,4 +9,6 @@ library AmmAdapterIdLib {
     string public constant SOLIDLY = "Solidly";
     string public constant BALANCER_COMPOSABLE_STABLE = "BalancerComposableStable";
     string public constant BALANCER_WEIGHTED = "BalancerWeighted";
+=======
+    string public constant GYROSCOPE = "Gyroscope";
 }
