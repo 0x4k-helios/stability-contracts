@@ -5,6 +5,8 @@ libs = ["lib"]
 fs_permissions = [{ access = "read-write", path = "./"}]
 solc_version = "0.8.23"
 gas_limit = "18446744073709551615"
+optimizer-runs = 200
+evm_version = "Shanghai"
 
 [profile.lite]
 optimizer = false
@@ -16,13 +18,15 @@ ignore = ["./src/test/**/*.sol"]
 [fmt]
 int_types = "short"
 ignore = ["./src/integrations/**/*.sol"]
-multiline_func_header = "params_first"
+multiline_func_header = "params_first_multi"
+line_length = 120
 
 [rpc_endpoints]
 polygon = "${POLYGON_RPC_URL}"
 base = "${BASE_RPC_URL}"
 arbitrum = "${ARBITRUM_RPC_URL}"
 ethereum = "${ETHEREUM_RPC_URL}"
+real = "${REAL_RPC_URL}"
 
 [etherscan]
 polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137  }

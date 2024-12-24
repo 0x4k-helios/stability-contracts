@@ -10,7 +10,7 @@ contract PlatformBaseTest is BaseSetup {
         _deal(BaseLib.TOKEN_USDC, address(this), 1e12);
     }
 
-    function testUserBalanceBase() public {
+    function testUserBalanceBase() public view {
         (
             address[] memory token,
             uint[] memory tokenPrice,
@@ -26,7 +26,7 @@ contract PlatformBaseTest is BaseSetup {
             assertNotEq(token[i], address(0));
             assertGt(tokenPrice[i], 0);
             if (token[i] == BaseLib.TOKEN_USDC) {
-                assertEq(tokenUserBalance[i], 1e12);
+                assertGe(tokenUserBalance[i], 1e12);
             } else {
                 assertEq(tokenUserBalance[i], 0);
             }

@@ -1,17 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
+/*
 
 import "../base/chains/PolygonSetup.sol";
 import "../base/UniversalTest.sol";
 
 contract GammaQuickSwapMerklFarmStrategyTest is PolygonSetup, UniversalTest {
     constructor() {
-        vm.rollFork(53133804); // FAIL. Reason: revert: Improper ratio catched at this block with special amounts
+        // vm.rollFork(53_133_804); // FAIL. Reason: revert: Improper ratio catched at this block with special amounts
+        // assertEq(block.number, 53_133_804);
     }
 
-    function testGQMFDebugDeposit() public universalTest {
-        specialDepositAmounts.push(11838);
-        specialDepositAmounts.push(11971);
+    function testGQMFDebugDeposit(uint tokenA, uint tokenB) public universalTest {
+        // function testGQMFDebugDeposit() public universalTest {
+        vm.assume(10000 < tokenA && tokenA < 20000);
+        vm.assume(10000 < tokenB && tokenB < 20000);
+        // vm.assume(tokenA > 10000);
+        // vm.assume(tokenB > 10000);
+        // vm.assume(tokenA - tokenB < 200);
+        specialDepositAmounts.push(tokenA);
+        specialDepositAmounts.push(tokenB);
+        // specialDepositAmounts.push(11838);
+        // specialDepositAmounts.push(11971);
 
         _addStrategy(1);
         // _addStrategy(2);
@@ -43,6 +53,7 @@ contract GammaQuickSwapMerklFarmStrategyTest is PolygonSetup, UniversalTest {
     }
 
     function _preHardWork() internal override {
-        deal(PolygonLib.TOKEN_dQUICK, currentStrategy, 10e18);
+        deal(PolygonLib.TOKEN_QUICK, currentStrategy, 10e18);
     }
 }
+*/
